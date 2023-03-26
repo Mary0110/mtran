@@ -397,52 +397,6 @@ def main():
         sys.exit(1)
     print(symbolTable)
 
-    # operators_table = []
-    # variables_table = []
-    # constants_table = []
-    # key_words_table = []
-    # general_table = []
-    #
-    # tables = ([operators_table, variables_table, constants_table, key_words_table])
-    # # op_ind, var_index, const_index, key_index = 0, 0, 0, 0
-    #
-    # try:
-    #     current_token = lexer.get_next_token()
-    #     while current_token.type != EOF:
-    #         if current_token.type in OPERATORS.values():
-    #             if current_token.value not in operators_table:
-    #                 operators_table.append(current_token.value)
-    #             general_table.append((0, operators_table.index(current_token.value),
-    #                                   current_token.line, current_token.column))
-    #
-    #         elif current_token in RESERVED_KEYWORDS.values():
-    #             if current_token.value not in key_words_table:
-    #                 key_words_table.append(current_token.value)
-    #             general_table.append((1, key_words_table.index(current_token.value),
-    #                                   current_token.line, current_token.column))
-    #         elif current_token.type in CONSTANTS:
-    #             if current_token.value not in constants_table:
-    #                 constants_table.append(current_token.value)
-    #             general_table.append((2, constants_table.index(current_token.value),
-    #                                   current_token.line, current_token.column))
-    #         else:
-    #             if current_token.value not in variables_table:
-    #                 variables_table.append(current_token.value)
-    #             general_table.append((3, variables_table.index(current_token.value),
-    #                                   current_token.line, current_token.column))
-    #
-    #         current_token = lexer.get_next_token()
-    #
-    # except LexerError as err:
-    #     print(f"LEXER ERROR: {err.message} line {err.line} column {err.index})")
-    #     sys.exit(1)
-
-    # for table in tables:
-    #     print("----------------------------------")
-    #     for i in range(len(table)):
-    #         print(i, "|", table[i])
-    # print("General table:", general_table)
-
 
 class SymbolTable(object):
     def __init__(self, lexer: Lexer, operators, reserved, constants):
