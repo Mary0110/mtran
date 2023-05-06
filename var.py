@@ -1,7 +1,8 @@
 class Var:
-    def __init__(self, name, _type, close_lvl, num_of_close, txt = None):
+    def __init__(self, name, _type, close_lvl, num_of_close, txt = None, id = None):
         self.name = name
         self.type = _type
+        self.id = id
         self.closure_lvl = close_lvl
         self.txt = txt
         self.num_of_closure = num_of_close

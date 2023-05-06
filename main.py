@@ -4,6 +4,7 @@ from lexer import Lexer, OPERATORS, RESERVED_KEYWORDS, CONSTANTS, LexicalError
 from parser import Parser, ParserUtils
 from sem_analyzer import SemAnalyzer
 from symbol_table import SymbolTable
+from exec import Translator
 
 
 def main():
@@ -44,6 +45,18 @@ def main():
     except SemAnalyzer.SemError as err:
         print(f"SEMANTIC ERROR:\n{err}")
         sys.exit(1)
+
+    interpreter = Translator(
+        parser.parser_tables.get_nodes(),
+        parser.parser_tables.get_operands(),
+        parser.parser_tables.get_vars(),
+        parser.parser_tables.get_keywords(),
+        parser.parser_tables.get_consts()    )
+    try:
+        interpreter.exec(syntax_tree)
+    except Translator.ExecutionError as err:
+        print(f"\n\n\nRUNTIME ERROR:\n{err}")
+        exit(1)
 
 
 if __name__ == '__main__':

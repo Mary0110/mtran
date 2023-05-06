@@ -110,7 +110,7 @@ class Parser:
 
         self.parser_tables = ParserTables(ops_tbl=tables[0], variables_tbl=tables[1], keywords_tbl=tables[3],
                                           consts_tbl=tables[2],
-                                          parser_nodes_tbl=["PROG", "VAR", "BODY"],
+                                          parser_nodes_tbl=["PROG", "VAR", "BODY", "indexation"],
                                           tables=tables)
         self.num_of_cond = 0
         CheckType.initialize(self.parser_tables)
@@ -128,6 +128,12 @@ class Parser:
             return f"SyntaxError({self.error_text!r}, {self.line}, {self.column})"
         def __str__(self):
             return f"{self.args[0]} ({self.line}:{self.column})"
+    class IncorrectNumOfIndexes(SyntaxError):
+        def __init__(self, line: int, index: int):
+            super().__init__(f"incorrect amount of indexes", line, index)
+
+        def __str__(self):
+            return f"incorrect amount of idx {self.line}, column {self.column}."
 
     class ExpectedComparisonOperator(SyntaxError):
         def __init__(self, text, line, column):
@@ -177,7 +183,7 @@ class Parser:
             super().__init__(f"using not declared variable {name}", line, index)
 
         def __str__(self):
-            return f"{self.msg} at line {self.line}, column {self.index}"
+            return f"{self.error_text} at line {self.line}, column {self.column}"
 
     class InvalidVarType(SyntaxError):
         def __init__(self, tp, expected_type, line, index):
@@ -207,6 +213,10 @@ class Parser:
             self.line = line
             self.column = column
 
+        def value(self):
+            if self.table is not None and self.index_in_table is not None:
+                return self.table[self.index_in_table]
+
         def __str__(self):
             return "NODE(" + str(self.table[self.index_in_table]) + ")"
 
@@ -232,8 +242,13 @@ class Parser:
         tok = self._present_token()
         res_node = Parser.Node(self.parser_tables.tables[tok.table_index], tok.index, line=tok.line, column=tok.column)
         self.advance()
+        if self.num_of_cond + 1 == 0:
+            self.num_of_cond = 1
         return res_node
 
+    def var_in_use(self, type=None):
+        ident_node = self._parse_variable_in_use(type)
+        return ident_node
     def get_scope_and_revised_indices(self,visibility_list):
         scope_idx = len(visibility_list) - 1
         revised_idx = -1
@@ -241,6 +256,9 @@ class Parser:
 
     def _parse_variable_in_use(self, type=None):
         tok = self._present_token()
+        if type is not None:
+            res_node = Parser.Node(self.parser_tables.tables[tok.table_index], tok.index, line=tok.line,
+                                   column=tok.column)
 
         res_node = Parser.Node(self.parser_tables.tables[tok.table_index], tok.index, line=tok.line, column=tok.column)
 
@@ -356,7 +374,7 @@ class Parser:
 
         if tok.table_index == self.parser_tables.tables.index(self.parser_tables.vars):
             var_types = ("int", "double")
-            res_node = self._parse_variable_in_use(var_types)
+            res_node = self.var_in_use(var_types)
         elif tok.table_index == self.parser_tables.tables.index(self.parser_tables.operators) and \
             self.parser_tables.tables[tok.table_index][tok.index] == '(':
             self.advance()
@@ -382,10 +400,12 @@ class Parser:
         tok = self._present_token()
         res_node = Parser.Node(self.parser_tables.consts, tok.index, None, tok.line, tok.column)
         self.advance()
+        self.num_of_cond = 0
         return res_node
 
     def _parse_scan(self):
         tok = self._present_token()
+        self.num_of_cond-=1
         if not CheckType.is_keyword(tok, "scan"):
             raise Parser.Expected("scan", tok.line, tok.column)
 
@@ -404,9 +424,9 @@ class Parser:
 
     def _parse_string(self):
         tok = self._present_token()
-
+        self.num_of_cond += 1
         if tok.table_index is self.parser_tables.tables.index(self.parser_tables.vars):
-            res_node = self._parse_variable_in_use("string")
+            res_node = self.var_in_use("string")
         elif CheckType.is_keyword(tok, "to_str"):
             tok = self._present_token()
             op = Parser.Node(self.parser_tables.tables[tok.table_index], tok.index, line=tok.line, column=tok.column)
@@ -426,10 +446,11 @@ class Parser:
                     self.parser_tables.tables[tok.table_index][
                         tok.index].type != STRIN:
                 raise Parser.Expected("string", tok.line, tok.column)
-
+            elif tok.table_index is None:
+                tok.table_index = 0
             res_node = Parser.Node((self.parser_tables.consts), tok.index, None, tok.line, tok.column)
             self.advance()
-
+        print(res_node)
         return res_node
 
     def _parse_comparison_operands(self):
@@ -468,6 +489,7 @@ class Parser:
 
         comp_op_node = Parser.Node(operator.table, operator.index_in_table, line=operator.line, column=operator.column)
         self._add_children(comp_op_node, left_operand, right_operand)
+        print(self.num_of_cond)
         return comp_op_node
 
     def _parse_comparison_operator(self):
@@ -488,7 +510,7 @@ class Parser:
         tok = self._present_token()
         if not self._is_to_int_double_bool(tok):
             raise Parser.Expected("to_int, to_double or to_bool", tok.line, tok.column)
-
+        self.num_of_cond += 1
         op_node = Parser.Node(self.parser_tables.tables[tok.table_index], tok.index, line=tok.line, column=tok.column)
         self.advance()
 
@@ -553,10 +575,11 @@ class Parser:
         self.num_of_cond += 1
         var_type = Parser.Node(self.parser_tables.tables[tok.table_index], tok.index, line=tok.line, column=tok.column)
         self.advance()
+        self.num_of_cond -= 1
 
         var_declaration = Parser.Node((self.parser_tables.get_nodes()), self.parser_tables.parser_nodes.index("VAR"),
-                                      line=var_type.line, column=var_type.column)
-        self._add_children(var_declaration, var_type)
+                                      line=tok.line, column=tok.column)
+        # self._add_children(var_declaration)
 
         # result = self._parse_var_in_declaration(var_type)
         tok = self._present_token()
@@ -657,7 +680,7 @@ class Parser:
             self.num_of_cond += 1
         elif (tok.table_index == self.parser_tables.tables.index(self.parser_tables.vars)
               and self.parser_tables.tables[tok.table_index][tok.index].type == "bool"):
-            parsed_node = self._parse_variable_in_use("bool")
+            parsed_node = self.var_in_use("bool")
         elif CheckType.is_operator(tok, '('):
             self.advance()
             parsed_node = self._parse_bool_expr()
@@ -828,7 +851,11 @@ class Parser:
             line=tok.line, column=tok.column
         )
         self.advance()
-
+        if while_node is None:
+            while_node = Parser.Node(
+                self.parser_tables.tables[tok.table_index], tok.index,
+                line=tok.line, column=tok.column
+            )
         condition_node = self._parse_while_condition()
 
         statement = self._parse_while_statement()
@@ -876,7 +903,7 @@ class Parser:
         else:
             if CheckType.is_variable(tok):
                 # parse variable to be assigned
-                ident_node = self._parse_variable_in_use()
+                ident_node = self.var_in_use()
 
                 # parse assignment operator
                 assignment_operator = self._parse_operator()

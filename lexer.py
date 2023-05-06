@@ -46,11 +46,14 @@ BREAK = 'BREAK'
 TO_INT = 'TO_INT'
 TO_STR = 'TO_STR'
 TO_DOUBLE = 'TO_DOUBLE'
+TO_BOOL = "TO_BOOL"
 SCAN = 'SCAN'
 PRINT = 'PRINT'
 EXIT = 'EXIT'
 TRUE = 'TRUE'
 FALSE = 'FALSE'
+EEQUAL = 'EEQUAL'
+
 
 OPERATORS = {
     '+': PLUS,
@@ -150,8 +153,9 @@ class LexicalError(Exception):
         self.column = column
         super().__init__(txt)
 
-    def __repr__(self):
-        return f"SyntaxError({self.message!r}, {self.line}, {self.column})"
+    def __repr__(self) :
+        return self.__str__()
+
 
     def __str__(self):
         return f"LexerError: {self.message} (line {self.line}, index {self.column})"
@@ -161,6 +165,8 @@ class OperandError(LexicalError):
     def __init__(self, char, line, column):
         super().__init__(f"Wrong usage of operand near '{char}'", line, column)
 
+    def __str__(self):
+        return f"OperandError: (line {self.line}, index {self.column})"
 
 
 class FloatNumberError(LexicalError):
